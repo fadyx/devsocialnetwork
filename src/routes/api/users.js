@@ -1,27 +1,25 @@
-const express = require("express");
+import express from "express";
+import gravatar from "gravatar";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import normalizeUrl from "normalize-url";
+import { check, validationResult } from "express-validator";
 
-const { check, validationResult } = require("express-validator");
-
-const gravatar = require("gravatar");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-
-const User = require("../../models/user");
+import User from "../../models/user.js";
 
 const router = express.Router();
 
-// @route   GET api/users
-// @desc    Register user
-// @access  Public
+// @route    POST api/users
+// @desc     Register user
+// @access   Public
 router.post(
   "/",
-  [
-    check("name", "name is required").not().isEmpty(),
-    check("email", "please provide a valid email").isEmail(),
-    check("password", "password must be longer than 6 characters").isLength({
-      min: 6,
-    }),
-  ],
+  check("name", "Name is required").notEmpty(),
+  check("email", "Please include a valid email").isEmail(),
+  check(
+    "password",
+    "Please enter a password with 6 or more characters"
+  ).isLength({ min: 6 }),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -32,15 +30,29 @@ router.post(
 
     try {
       let user = await User.findOne({ email });
+
       if (user) {
         return res
           .status(400)
           .json({ errors: [{ msg: "User already exists" }] });
       }
 
-      const avatar = gravatar.url(email, { s: "200", r: "pg", d: "mm" });
+      const avatar = normalizeUrl(
+        gravatar.url(email, {
+          s: "200",
+          r: "pg",
+          d: "mm",
+        }),
+        { forceHttps: true }
+      );
 
-      user = new User({ name, email, password, avatar });
+      user = new User({
+        name,
+        email,
+        avatar,
+        password,
+      });
+
       const salt = await bcrypt.genSalt(10);
 
       user.password = await bcrypt.hash(password, salt);
@@ -53,16 +65,20 @@ router.post(
         },
       };
 
-      const token = jwt.sign(payload, process.env.JWT_SECRET, {
-        expiresIn: 360000,
-      });
-
-      return res.status(201).json({ user, token });
-    } catch (error) {
-      console.error(error.message);
+      jwt.sign(
+        payload,
+        process.env.JWT_SECRET,
+        { expiresIn: "5 days" },
+        (err, token) => {
+          if (err) throw err;
+          res.json({ token });
+        }
+      );
+    } catch (err) {
+      console.error(err.message);
       res.status(500).send("Server error");
     }
   }
 );
 
-module.exports = router;
+export default router;

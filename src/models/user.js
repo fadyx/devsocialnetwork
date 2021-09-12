@@ -1,6 +1,6 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
-const Schema = mongoose.Schema;
+const { Schema } = mongoose;
 
 const userSchema = new Schema({
   name: {
@@ -10,6 +10,7 @@ const userSchema = new Schema({
   email: {
     type: String,
     required: true,
+    unique: true,
   },
   password: {
     type: String,
@@ -24,11 +25,6 @@ const userSchema = new Schema({
   },
 });
 
-userSchema.set("toJSON", {
-  transform: function (doc, ret, opts) {
-    delete ret["password"];
-    return ret;
-  },
-});
+const User = mongoose.model("User", userSchema);
 
-module.exports = User = mongoose.model("User", userSchema);
+export default User;

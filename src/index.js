@@ -1,13 +1,11 @@
-require("dotenv").config();
+import express from "express";
 
-const express = require("express");
+import connectDB from "./db/db.js";
 
-const { connectDB } = require("./db/db");
-
-const usersRouter = require("./routes/api/users");
-const postsRouter = require("./routes/api/posts");
-const profileRouter = require("./routes/api/profile");
-const authRouter = require("./routes/api/auth");
+import usersRouter from "./routes/api/users.js";
+import postsRouter from "./routes/api/posts.js";
+import profileRouter from "./routes/api/profile.js";
+import authRouter from "./routes/api/auth.js";
 
 const app = express();
 

@@ -1,36 +1,32 @@
-const express = require("express");
+import express from "express";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import { check, validationResult } from "express-validator";
+
+import auth from "../../middleware/auth.js";
+import User from "../../models/user.js";
 
 const router = express.Router();
 
-const auth = require("../../middleware/auth");
-const User = require("../../models/user");
-
-const { check, validationResult } = require("express-validator");
-
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-
-// @route   GET api/auth
-// @desc    Test auth
-// @access  Public
+// @route    GET api/auth
+// @desc     Get user by token
+// @access   Private
 router.get("/", auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
     res.json(user);
-  } catch (error) {
-    res.status(500).send("Server error");
+  } catch (err) {
+    res.status(500).send("Server Error");
   }
 });
 
-// @route   POST api/auth
-// @desc    Authenticate user and get token
-// @access  Public
+// @route    POST api/auth
+// @desc     Authenticate user & get token
+// @access   Public
 router.post(
   "/",
-  [
-    check("email", "please provide a valid email").isEmail(),
-    check("password", "password is required").exists(),
-  ],
+  check("email", "Please include a valid email").isEmail(),
+  check("password", "Password is required").exists(),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -41,17 +37,20 @@ router.post(
 
     try {
       let user = await User.findOne({ email });
+
       if (!user) {
         return res
           .status(400)
-          .json({ errors: [{ msg: "Invalid credentials" }] });
+          .json({ errors: [{ msg: "Invalid Credentials" }] });
       }
 
       const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch)
+
+      if (!isMatch) {
         return res
           .status(400)
-          .json({ errors: [{ msg: "Invalid credentials" }] });
+          .json({ errors: [{ msg: "Invalid Credentials" }] });
+      }
 
       const payload = {
         user: {
@@ -59,16 +58,19 @@ router.post(
         },
       };
 
-      const token = jwt.sign(payload, process.env.JWT_SECRET, {
-        expiresIn: 360000,
-      });
-
-      return res.status(201).json({ user, token });
-    } catch (error) {
-      console.error(error.message);
+      jwt.sign(
+        payload,
+        process.env.JWT_SECRET,
+        { expiresIn: "5 days" },
+        (err, token) => {
+          if (err) throw err;
+          res.json({ token });
+        }
+      );
+    } catch (err) {
       res.status(500).send("Server error");
     }
   }
 );
 
-module.exports = router;
+export default router;
